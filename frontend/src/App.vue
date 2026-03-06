@@ -209,21 +209,30 @@
 
           <!-- 日历视图 -->
           <div v-else class="calendar-view">
+            <div class="calendar-legend">
+              <div class="legend-item">
+                <span class="legend-dot available"></span>
+                <span>有可用会议室</span>
+              </div>
+              <div class="legend-item">
+                <span class="legend-dot full"></span>
+                <span>会议室已满</span>
+              </div>
+              <div class="legend-item">
+                <span class="legend-dot none"></span>
+                <span>无预定</span>
+              </div>
+            </div>
             <el-calendar v-model="calendarDate">
               <template #date-cell="{ data }">
-                <div class="calendar-cell" @click="selectCalendarDate(data.day)">
-                  <p :class="{ 'is-selected': data.isSelected }">{{ data.day.split('-').slice(2).join('-') }}</p>
-                  <div class="calendar-rooms">
-                    <el-tag 
-                      v-for="room in getRoomsByDate(data.day)" 
-                      :key="room.id"
-                      size="small"
-                      :type="isRoomAvailableOnDate(room, data.day) ? 'success' : 'info'"
-                      style="margin: 2px;"
-                    >
-                      {{ room.name }}
-                    </el-tag>
-                  </div>
+                <div 
+                  class="calendar-cell" 
+                  :class="getCalendarCellClass(data.day)"
+                  @click="selectCalendarDate(data.day)"
+                >
+                  <p class="calendar-date" :class="{ 'is-selected': data.isSelected }">
+                    {{ data.day.split('-').slice(2).join('-') }}
+                  </p>
                 </div>
               </template>
             </el-calendar>
@@ -710,6 +719,42 @@ function isRoomAvailableOnDate(room: Room, date: string): boolean {
   return dateReserves.length < 6
 }
 
+// 获取日历单元格样式类
+function getCalendarCellClass(date: string): string {
+  const availableCount = getAvailableRoomCount(date)
+  const totalRooms = roomList.value.length
+  
+  if (totalRooms === 0) return 'cell-none'
+  if (availableCount === 0) return 'cell-full'
+  if (availableCount === totalRooms) return 'cell-available'
+  return 'cell-partial'
+}
+
+// 获取日历状态文本
+function getCalendarStatusText(date: string): string {
+  const availableCount = getAvailableRoomCount(date)
+  const totalRooms = roomList.value.length
+  
+  if (totalRooms === 0) return '无数据'
+  if (availableCount === 0) return '已满'
+  if (availableCount === totalRooms) return '可预定'
+  return '部分可用'
+}
+
+// 获取可用会议室数量
+function getAvailableRoomCount(date: string): number {
+  if (!date || roomList.value.length === 0) return 0
+  
+  return roomList.value.filter(room => {
+    const dateReserves = allReserves.value.filter(r => 
+      r.roomId === room.id && 
+      r.reserveDate === date &&
+      r.status === '正常'
+    )
+    return dateReserves.length < 6
+  }).length
+}
+
 // 获取指定日期的会议室
 function getRoomsByDate(date: string): Room[] {
   return roomList.value
@@ -1013,20 +1058,95 @@ async function changePassword() {
   padding: 20px;
 }
 
+.calendar-legend {
+  display: flex;
+  justify-content: center;
+  gap: 30px;
+  margin-bottom: 20px;
+  padding: 15px;
+  background: #f5f7fa;
+  border-radius: 8px;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: #666;
+}
+
+.legend-dot {
+  width: 16px;
+  height: 16px;
+  border-radius: 4px;
+}
+
+.legend-dot.available {
+  background: #67c23a;
+}
+
+.legend-dot.full {
+  background: #f56c6c;
+}
+
+.legend-dot.none {
+  background: #e4e7ed;
+  border: 1px solid #dcdfe6;
+}
+
 .calendar-cell {
   height: 100%;
   cursor: pointer;
-}
-
-.calendar-cell:hover {
+  padding: 8px;
+  border-radius: 4px;
+  transition: all 0.3s;
   background: #f5f7fa;
 }
 
-.calendar-rooms {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 2px;
-  margin-top: 5px;
+.calendar-cell:hover {
+  opacity: 0.8;
+}
+
+/* 无预定 - 灰色 */
+.calendar-cell.cell-none {
+  background: #f5f7fa;
+  border: 2px solid #dcdfe6;
+}
+
+/* 全部可用 - 绿色 */
+.calendar-cell.cell-available {
+  background: #67c23a;
+  border: 2px solid #67c23a;
+}
+
+.calendar-cell.cell-available .calendar-date {
+  color: white;
+}
+
+/* 部分可用 - 橙色 */
+.calendar-cell.cell-partial {
+  background: #e6a23c;
+  border: 2px solid #e6a23c;
+}
+
+.calendar-cell.cell-partial .calendar-date {
+  color: white;
+}
+
+/* 已满 - 红色 */
+.calendar-cell.cell-full {
+  background: #f56c6c;
+  border: 2px solid #f56c6c;
+}
+
+.calendar-cell.cell-full .calendar-date {
+  color: white;
+}
+
+.calendar-date {
+  font-weight: bold;
+  text-align: center;
 }
 
 /* 预定对话框 */
