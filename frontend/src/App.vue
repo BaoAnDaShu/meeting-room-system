@@ -242,32 +242,31 @@
             </div>
           </template>
           
-          <el-timeline v-if="myReserves.length > 0">
-            <el-timeline-item
-              v-for="reserve in myReserves"
-              :key="reserve.id"
-              :type="reserve.status === '正常' ? 'primary' : 'danger'"
-              :icon="reserve.status === '正常' ? 'Timer' : 'CircleClose'"
-            >
-              <div class="reserve-item">
-                <div class="reserve-info">
-                  <h4>{{ reserve.room?.name }}</h4>
-                  <p>{{ reserve.reserveDate }} {{ reserve.timeSlot }}</p>
-                  <el-tag :type="reserve.status === '正常' ? 'success' : 'danger'" size="small">
-                    {{ reserve.status }}
-                  </el-tag>
-                </div>
+          <el-table v-if="myReserves.length > 0" :data="myReserves" border style="width: 100%">
+            <el-table-column prop="room.name" label="会议室" width="150" />
+            <el-table-column prop="reserveDate" label="日期" width="120" />
+            <el-table-column prop="timeSlot" label="时间段" width="120" />
+            <el-table-column prop="status" label="状态" width="100">
+              <template #default="scope">
+                <el-tag :type="scope.row.status === '正常' ? 'success' : 'danger'" size="small">
+                  {{ scope.row.status }}
+                </el-tag>
+              </template>
+            </el-table-column>
+            <el-table-column label="操作" width="100">
+              <template #default="scope">
                 <el-button 
-                  v-if="reserve.status === '正常'"
+                  v-if="scope.row.status === '正常'"
                   type="danger" 
                   size="small"
-                  @click="cancelReserve(reserve.id)"
+                  @click="cancelReserve(scope.row.id)"
                 >
                   取消
                 </el-button>
-              </div>
-            </el-timeline-item>
-          </el-timeline>
+                <span v-else>-</span>
+              </template>
+            </el-table-column>
+          </el-table>
           <el-empty v-else description="暂无预定记录" />
         </el-card>
       </el-main>
@@ -275,7 +274,7 @@
   </div>
 
   <!-- 预定对话框 -->
-  <el-dialog v-model="reserveDialogVisible" title="预定会议室" width="500px">
+  <el-dialog v-model="reserveDialogVisible" title="预定会议室" width="550px">
     <div v-if="selectedRoom" class="reserve-dialog-content">
       <div class="selected-room-info">
         <h3>{{ selectedRoom.name }}</h3>
@@ -303,15 +302,22 @@
             <el-check-tag
               v-for="slot in availableTimeSlots"
               :key="slot.time"
-              :checked="reserveForm.timeSlot === slot.time"
+              :checked="selectedTimeSlots.includes(slot.time)"
               :disabled="!slot.available"
-              @change="selectTimeSlot(slot.time)"
+              @change="toggleTimeSlot(slot.time)"
               class="time-slot-tag"
-              :class="{ 'unavailable': !slot.available }"
+              :class="{ 
+                'unavailable': !slot.available,
+                'selected': selectedTimeSlots.includes(slot.time)
+              }"
             >
               {{ slot.time }}
               <el-tag v-if="!slot.available" type="danger" size="small">已约</el-tag>
             </el-check-tag>
+          </div>
+          <div class="time-slot-info" v-if="selectedTimeSlots.length > 0">
+            <el-tag type="success">已选择 {{ selectedTimeSlots.length }} 个时段</el-tag>
+            <span class="total-duration">总计: {{ selectedTimeSlots.length }} 小时</span>
           </div>
         </el-form-item>
       </el-form>
@@ -334,8 +340,8 @@
     </div>
     <template #footer>
       <el-button @click="reserveDialogVisible = false">取消</el-button>
-      <el-button type="primary" @click="submitReserve" :disabled="!canSubmit">
-        确认预定
+      <el-button type="primary" @click="submitReserve" :disabled="selectedTimeSlots.length === 0">
+        确认预定 ({{ selectedTimeSlots.length }}个时段)
       </el-button>
     </template>
   </el-dialog>
@@ -516,6 +522,7 @@ const reserveForm = ref({
 })
 const availableTimeSlots = ref<{ time: string; available: boolean }[]>([])
 const roomReserves = ref<Reserve[]>([])
+const selectedTimeSlots = ref<string[]>([])
 
 // 会议室详情
 const roomDetailVisible = ref(false)
@@ -723,6 +730,7 @@ function disabledDate(date: Date) {
 function openReserveDialog(room: Room) {
   selectedRoom.value = room
   reserveForm.value = { reserveDate: filterForm.value.date || '', timeSlot: '' }
+  selectedTimeSlots.value = [] // 清空已选择的时间段
   roomReserves.value = allReserves.value.filter(r => r.roomId === room.id && r.status === '正常')
   loadTimeSlots()
   reserveDialogVisible.value = true
@@ -757,29 +765,44 @@ function loadTimeSlots() {
   }))
 }
 
-// 选择时间段
-function selectTimeSlot(time: string) {
-  if (availableTimeSlots.value.find(s => s.time === time)?.available) {
-    reserveForm.value.timeSlot = time
+// 切换时间段选择
+function toggleTimeSlot(time: string) {
+  const slot = availableTimeSlots.value.find(s => s.time === time)
+  if (!slot?.available) return
+
+  const index = selectedTimeSlots.value.indexOf(time)
+  if (index > -1) {
+    // 如果已选择，则取消选择
+    selectedTimeSlots.value.splice(index, 1)
+  } else {
+    // 如果未选择，则添加到选择列表
+    selectedTimeSlots.value.push(time)
+    // 按时间排序
+    selectedTimeSlots.value.sort()
   }
 }
 
 // 提交预定
 async function submitReserve() {
-  if (!reserveForm.value.reserveDate || !reserveForm.value.timeSlot) {
+  if (!reserveForm.value.reserveDate || selectedTimeSlots.value.length === 0) {
     ElMessage.warning('请选择预定日期和时间段')
     return
   }
 
   try {
-    await request.post('/reserves', {
-      roomId: selectedRoom.value?.id,
-      userId: currentUser.value.id,
-      reserveDate: reserveForm.value.reserveDate,
-      timeSlot: reserveForm.value.timeSlot,
-      status: '正常'
-    })
-    ElMessage.success('预定成功')
+    // 批量提交多个时间段的预定
+    const promises = selectedTimeSlots.value.map(timeSlot => 
+      request.post('/reserves', {
+        roomId: selectedRoom.value?.id,
+        userId: currentUser.value.id,
+        reserveDate: reserveForm.value.reserveDate,
+        timeSlot: timeSlot,
+        status: '正常'
+      })
+    )
+    
+    await Promise.all(promises)
+    ElMessage.success(`成功预定 ${selectedTimeSlots.value.length} 个时段`)
     reserveDialogVisible.value = false
     getRoomList()
     getAllReserves()
@@ -1045,6 +1068,24 @@ async function changePassword() {
 .time-slot-tag.unavailable {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+.time-slot-tag.selected {
+  background: #409eff;
+  color: white;
+  border-color: #409eff;
+}
+
+.time-slot-info {
+  margin-top: 15px;
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.total-duration {
+  color: #666;
+  font-size: 14px;
 }
 
 .reserve-history {
