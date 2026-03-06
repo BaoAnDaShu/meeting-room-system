@@ -1,6 +1,7 @@
-import { Controller, Get, Post, Body, Param, NotFoundException, Put } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, NotFoundException, Put, Delete } from '@nestjs/common';
 import { RoomService } from './room.service';
 import { Room } from './room.entity';
+import { CreateRoomDto } from './dto/create-room.dto';
 
 @Controller('rooms') // 接口前缀：所有接口都以 /rooms 开头（匹配实际启动日志）
 export class RoomController {
@@ -14,7 +15,7 @@ export class RoomController {
 
   // 接口2：添加会议室（POST请求，前端提交表单数据到这个接口）
   @Post()
-  create(@Body() roomData: Partial<Room>): Promise<Room> {
+  create(@Body() roomData: CreateRoomDto): Promise<Room> {
     return this.roomService.create(roomData);
   }
 
@@ -36,5 +37,11 @@ export class RoomController {
     @Body('status') status: string,
   ): Promise<Room> {
     return this.roomService.updateRoomStatus(+id, status);
+  }
+
+  // 接口5：删除会议室（DELETE请求）
+  @Delete(':id')
+  async delete(@Param('id') id: string): Promise<void> {
+    await this.roomService.delete(+id);
   }
 }

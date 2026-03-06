@@ -1,6 +1,7 @@
 import { Controller, Post, Body, Get, Param, Delete, NotFoundException } from '@nestjs/common';
 import { ReserveService } from './reserve.service';
 import { Reserve } from './reserve.entity';
+import { CreateReserveDto } from './dto/create-reserve.dto';
 
 @Controller('reserves') // 接口前缀：所有预定相关接口以 /reserves 开头
 export class ReserveController {
@@ -8,11 +9,7 @@ export class ReserveController {
 
   // 接口1：预定会议室（POST请求，前端提交预定信息）
   @Post()
-  async create(@Body() reserveData: Partial<Reserve>): Promise<Reserve> {
-    // 简单校验：确保核心字段不为空
-    if (!reserveData.userId || !reserveData.roomId || !reserveData.reserveDate || !reserveData.timeSlot) {
-      throw new Error('用户ID、会议室ID、预定日期、时间段不能为空');
-    }
+  async create(@Body() reserveData: CreateReserveDto): Promise<Reserve> {
     return this.reserveService.create(reserveData);
   }
 

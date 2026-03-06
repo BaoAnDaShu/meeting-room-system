@@ -6,18 +6,15 @@ import { ReserveModule } from './reserve/reserve.module';
 
 @Module({
   imports: [
-    // 数据库配置（替换为MySQL，适配NestJS最新版+TypeORM最新版，关键修改处）
+    // 数据库配置（使用SQLite，无需安装额外数据库软件）
     TypeOrmModule.forRoot({
-      type: 'mysql', // 数据库类型：mysql（替换原sqlite）
-      host: 'localhost', // 数据库地址，本地默认localhost
-      port: 3306, // MySQL默认端口，无需修改（和安装时一致）
-      username: 'root', // MySQL用户名，默认root
-      password: '123456', // 安装MySQL时设置的root密码（替换成你自己的密码）
-      database: 'meeting_room', // 之前创建的数据库名，固定不变
-      autoLoadEntities: true, // 最新版保留该配置，自动加载实体
-      synchronize: true, // 开发环境自动创建数据库表，无需手动写SQL（最新版兼容）
-      charset: 'utf8mb4', // 字符集，避免中文乱码（最新版推荐配置）
-      logging: false, // 新增：最新版可选配置，关闭SQL日志，减少终端冗余输出
+      type: 'sqlite',
+      database: 'meeting_room.db',
+      autoLoadEntities: true,
+      // 注意：synchronize 在开发环境可以设为 true，生产环境必须设为 false
+      // 生产环境应该使用数据库迁移（migrations）来管理表结构变更
+      synchronize: process.env.NODE_ENV !== 'production',
+      logging: process.env.NODE_ENV !== 'production', // 开发环境开启日志，生产环境关闭
     }),
     RoomModule, // 会议室模块
     UserModule, // 用户模块

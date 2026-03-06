@@ -10,7 +10,7 @@ export class ReserveService {
   constructor(
     @InjectRepository(Reserve)
     private reserveRepository: Repository<Reserve>,
-    private roomService: RoomService, // 注入会议室服务（修改会议室状态）
+    private roomService: RoomService, // 注入会议室服务（校验会议室是否存在）
     private userService: UserService, // 注入用户服务（校验用户是否存在）
   ) {}
 
@@ -43,17 +43,9 @@ export class ReserveService {
       throw new ConflictException(`该会议室在 ${reserveData.reserveDate} ${reserveData.timeSlot} 已被预定`);
     }
 
-    // 校验3：会议室状态是否为可用
-    if (room.status !== '可用') {
-      throw new ConflictException(`会议室 ${room.name} 目前不可用`);
-    }
-
     // 步骤1：创建预定记录
     const reserve = this.reserveRepository.create(reserveData);
     const savedReserve = await this.reserveRepository.save(reserve);
-
-    // 步骤2：修改会议室状态为「已预定」
-    await this.roomService.updateRoomStatus(reserveData.roomId, '已预定');
 
     return savedReserve;
   }
@@ -77,9 +69,6 @@ export class ReserveService {
     // 步骤1：修改预定状态为「已取消」
     reserve.status = '已取消';
     const updatedReserve = await this.reserveRepository.save(reserve);
-
-    // 步骤2：修改会议室状态为「可用」
-    await this.roomService.updateRoomStatus(reserve.roomId, '可用');
 
     return updatedReserve;
   }

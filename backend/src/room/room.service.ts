@@ -35,4 +35,13 @@ export class RoomService {
     room.status = status; // 修改状态（可用/已预定）
     return this.roomRepository.save(room);
   }
+
+  // 5. 删除会议室
+  async delete(id: number): Promise<void> {
+    const room = await this.findOne(id);
+    if (!room) {
+      throw new Error(`会议室ID ${id} 不存在`);
+    }
+    await this.roomRepository.delete(id);
+  }
 }
