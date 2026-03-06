@@ -87,4 +87,12 @@ export class ReserveService {
   async findOne(id: number): Promise<Reserve | null> {
     return this.reserveRepository.findOne({ where: { id } });
   }
+
+  // 5. 获取所有预定（管理后台和日历视图用）
+  async findAll(): Promise<Reserve[]> {
+    return this.reserveRepository.find({
+      relations: ['room', 'user'],
+      order: { reserveDate: 'ASC' },
+    });
+  }
 }

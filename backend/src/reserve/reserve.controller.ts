@@ -25,7 +25,13 @@ export class ReserveController {
     return this.reserveService.findByUserId(+userId);
   }
 
-  // 接口4：根据预定ID获取单个预定记录（后续扩展用）
+  // 接口4：获取所有预定（管理后台和日历视图用）
+  @Get()
+  async findAll(): Promise<Reserve[]> {
+    return this.reserveService.findAll();
+  }
+
+  // 接口5：根据预定ID获取单个预定记录（后续扩展用）
   @Get(':id')
   async findOne(@Param('id') id: string): Promise<Reserve> {
     const reserve = await this.reserveService.findOne(+id);
