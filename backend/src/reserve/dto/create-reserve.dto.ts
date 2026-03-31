@@ -1,4 +1,4 @@
-import { IsString, IsNotEmpty, IsNumber, IsInt } from 'class-validator';
+import { IsString, IsNotEmpty, IsNumber, IsInt, Matches } from 'class-validator';
 
 export class CreateReserveDto {
   @IsString()
@@ -6,8 +6,14 @@ export class CreateReserveDto {
   reserveDate: string;
 
   @IsString()
-  @IsNotEmpty({ message: '预定时间段不能为空' })
-  timeSlot: string;
+  @IsNotEmpty({ message: '开始时间不能为空' })
+  @Matches(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, { message: '开始时间格式错误，应为 HH:mm' })
+  startTime: string;
+
+  @IsString()
+  @IsNotEmpty({ message: '结束时间不能为空' })
+  @Matches(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, { message: '结束时间格式错误，应为 HH:mm' })
+  endTime: string;
 
   @IsNumber()
   @IsInt({ message: '用户ID必须是整数' })

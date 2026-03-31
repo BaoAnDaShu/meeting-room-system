@@ -36,7 +36,7 @@ export class UserInitService implements OnModuleInit {
     const adminUser = this.userRepository.create({
       username: adminUsername,
       password: hashedPassword,
-      role: '管理员',
+      role: 'admin', // 使用英文角色名，与权限系统保持一致
     });
 
     await this.userRepository.save(adminUser);

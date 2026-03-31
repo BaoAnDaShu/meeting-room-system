@@ -30,17 +30,26 @@ export class ReserveService {
       throw new NotFoundException(`会议室ID ${reserveData.roomId} 不存在`);
     }
 
-    // 校验2：会议室是否已被预定（同一日期+同一时间段，不能重复预定）
-    const existingReserve = await this.reserveRepository.findOne({
-      where: {
-        roomId: reserveData.roomId,
-        reserveDate: reserveData.reserveDate,
-        timeSlot: reserveData.timeSlot,
-        status: '正常', // 排除已取消的预定
-      },
-    });
-    if (existingReserve) {
-      throw new ConflictException(`该会议室在 ${reserveData.reserveDate} ${reserveData.timeSlot} 已被预定`);
+    // 校验3：时间格式和逻辑
+    if (!reserveData.startTime || !reserveData.endTime) {
+      throw new ConflictException('开始时间和结束时间不能为空');
+    }
+
+    // 校验4：结束时间必须晚于开始时间
+    if (reserveData.startTime >= reserveData.endTime) {
+      throw new ConflictException('结束时间必须晚于开始时间');
+    }
+
+    // 校验5：检查时间冲突（精确到分钟）
+    const hasConflict = await this.checkTimeConflict(
+      reserveData.roomId!,
+      reserveData.reserveDate!,
+      reserveData.startTime!,
+      reserveData.endTime!
+    );
+    
+    if (hasConflict) {
+      throw new ConflictException(`该会议室在 ${reserveData.reserveDate} ${reserveData.startTime}-${reserveData.endTime} 时间段已被预定`);
     }
 
     // 步骤1：创建预定记录
@@ -48,6 +57,37 @@ export class ReserveService {
     const savedReserve = await this.reserveRepository.save(reserve);
 
     return savedReserve;
+  }
+
+  // 检查时间冲突
+  private async checkTimeConflict(
+    roomId: number,
+    reserveDate: string,
+    startTime: string,
+    endTime: string
+  ): Promise<boolean> {
+    // 获取该日期该会议室的所有正常预定
+    const existingReserves = await this.reserveRepository.find({
+      where: {
+        roomId,
+        reserveDate,
+        status: '正常',
+      },
+    });
+
+    // 检查是否有时间重叠
+    for (const reserve of existingReserves) {
+      // 时间重叠条件：
+      // 新区间的开始时间 < 已有区间的结束时间 且 新区间的结束时间 > 已有区间的开始时间
+      if (
+        startTime < reserve.endTime &&
+        endTime > reserve.startTime
+      ) {
+        return true; // 有冲突
+      }
+    }
+
+    return false; // 无冲突
   }
 
   // 2. 取消预定（核心功能）

@@ -11,8 +11,11 @@ export class Reserve {
   @Column() // 预定日期（格式：YYYY-MM-DD，比如2026-02-12）
   reserveDate: string;
 
-  @Column() // 预定时间段（格式：HH:mm-HH:mm，比如09:00-10:00）
-  timeSlot: string;
+  @Column() // 开始时间（格式：HH:mm，比如09:00）
+  startTime: string;
+
+  @Column() // 结束时间（格式：HH:mm，比如10:30）
+  endTime: string;
 
   @Column({ default: '正常' }) // 预定状态：正常/已取消
   status: string;
